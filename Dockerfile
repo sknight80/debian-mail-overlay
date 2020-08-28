@@ -4,14 +4,14 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG BUILD_CORES
 
 ARG SKALIBS_VER=2.9.2.1
-ARG EXECLINE_VER=2.6.0.1
-ARG S6_VER=2.9.1.0
+ARG EXECLINE_VER=2.6.1.0
+ARG S6_VER=2.9.2.0
 ARG RSPAMD_VER=2.5
 ARG GUCCI_VER=1.2.2
 
 ARG SKALIBS_SHA256_HASH="250b99b53dd413172db944b31c1b930aa145ac79fe6c5d7e6869ef804228c539"
-ARG EXECLINE_SHA256_HASH="e7cbb7b5942674a0b5176c42aa0a3194a848419a698e4aad9d1764d2b429ba9d"
-ARG S6_SHA256_HASH="05e259532c6db8cb23f5f79938669cee30152008ac9e792ff4acb26db9a01ff7"
+ARG EXECLINE_SHA256_HASH="a24c76f097ff44fe50b63b89bcde5d6ba9a481aecddbe88ee01b0e5a7b314556"
+ARG S6_SHA256_HASH="363db72af8fffba764b775c872b0749d052805b893b07888168f59a841e9dddd"
 ARG RSPAMD_SHA256_HASH="ef66073079cf02bda8f31e861ff3a34467a957d6c3958c118e142915ef960038"
 ARG GUCCI_SHA256_HASH="133074f1aff9c31ab02cbe159553e2db27ebee6d8a0a53a3467edf84321bc2af"
 
@@ -58,10 +58,8 @@ RUN NB_CORES=${BUILD_CORES-$(getconf _NPROCESSORS_CONF)} \
     openssl \
     ca-certificates \
     gnupg \
-#    build-essential \
     dirmngr \
     netcat \
- ## SKALIBS
  && cd /tmp \
  && SKALIBS_TARBALL="skalibs-${SKALIBS_VER}.tar.gz" \
  && wget -q https://skarnet.org/software/skalibs/${SKALIBS_TARBALL} \
@@ -70,17 +68,14 @@ RUN NB_CORES=${BUILD_CORES-$(getconf _NPROCESSORS_CONF)} \
  && tar xzf ${SKALIBS_TARBALL} && cd skalibs-${SKALIBS_VER} \
  && ./configure --prefix=/usr --datadir=/etc \
  && make && make install \
- ## TARBALL
  && cd /tmp \
  && EXECLINE_TARBALL="execline-${EXECLINE_VER}.tar.gz" \
  && wget -q https://skarnet.org/software/execline/${EXECLINE_TARBALL} \
  && CHECKSUM=$(sha256sum ${EXECLINE_TARBALL} | awk '{print $1}') \
  && if [ "${CHECKSUM}" != "${EXECLINE_SHA256_HASH}" ]; then echo "${EXECLINE_TARBALL} : bad checksum" && exit 1; fi \
  && tar xzf ${EXECLINE_TARBALL} && cd execline-${EXECLINE_VER} \
- && ./configure --prefix=/usr \
+ && ./configure --prefix=/usr --libdir=/usr/local/lib/ \
  && make && make install \
- && ln -s /usr/lib/execline/libexecline.a /usr/lib/libexecline.a \
- ## S6
  && cd /tmp \
  && S6_TARBALL="s6-${S6_VER}.tar.gz" \
  && wget -q https://skarnet.org/software/s6/${S6_TARBALL} \
@@ -89,16 +84,14 @@ RUN NB_CORES=${BUILD_CORES-$(getconf _NPROCESSORS_CONF)} \
  && tar xzf ${S6_TARBALL} && cd s6-${S6_VER} \
  && ./configure --prefix=/usr --bindir=/usr/bin --sbindir=/usr/sbin \
  && make && make install \
- ## RSPAMD
  && cd /tmp \
  && RSPAMD_TARBALL="${RSPAMD_VER}.tar.gz" \
  && wget -q https://github.com/rspamd/rspamd/archive/${RSPAMD_TARBALL} \
  && CHECKSUM=$(sha256sum ${RSPAMD_TARBALL} | awk '{print $1}') \
  && if [ "${CHECKSUM}" != "${RSPAMD_SHA256_HASH}" ]; then echo "${RSPAMD_TARBALL} : bad checksum" && exit 1; fi \
  && tar xzf ${RSPAMD_TARBALL} && cd rspamd-${RSPAMD_VER} \
- && cmake \
+ && cd /tmp/rspamd-${RSPAMD_VER} && cmake \
     -DCMAKE_INSTALL_PREFIX=/usr \
-    -DCMAKE_CXX_COMPILER="g++" \
     -DCONFDIR=/etc/rspamd \
     -DRUNDIR=/run/rspamd \
     -DDBDIR=/var/mail/rspamd \
@@ -117,7 +110,6 @@ RUN NB_CORES=${BUILD_CORES-$(getconf _NPROCESSORS_CONF)} \
     . \
  && make -j${NB_CORES} \
  && make install \
- ## GUCCI
  && cd /tmp \
  && GUCCI_BINARY="gucci-v${GUCCI_VER}-linux-amd64" \
  && wget -q https://github.com/noqcks/gucci/releases/download/${GUCCI_VER}/${GUCCI_BINARY} \
